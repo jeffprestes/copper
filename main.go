@@ -2,21 +2,39 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	exchange "github.com/copper/contracts"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/jeffprestes/copper/contracts"
 )
+
+// LogFill represents a LogFill event raised by the Exchange contract.
+type LogFill struct {
+	Maker                  common.Address
+	Taker                  common.Address
+	FeeRecipient           common.Address
+	MakerToken             common.Address
+	TakerToken             common.Address
+	FilledMakerTokenAmount *big.Int
+	FilledTakerTokenAmount *big.Int
+	PaidMakerFee           *big.Int
+	PaidTakerFee           *big.Int
+	Tokens                 [32]byte
+	OrderHash              [32]byte
+	Raw                    types.Log // Blockchain specific contextual infos
+}
 
 func main() {
 	//Connect to mainnet
-	client, err := ethclient.Dial("https://mainnet.infura.io")
+	client, err := ethclient.Dial("https://mainnet.infura.io/QPF0qjGpH9OjFuuMrCse")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,32 +55,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	contractAbi, err := abi.JSON(strings.NewReader(string(exchange.ExchangeABI)))
+	contractAbi, err := abi.JSON(strings.NewReader(string(contracts.ExchangeABI)))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, vLog := range logs {
-		fillEvent := struct {
-			Indexedmaker           string //address
-			Taker                  string //address
-			FeeRecipient           string //address
-			MakerToken             string //address
-			TakerToken             string //address
-			FilledMakerTokenAmount uint
-			FilledTakerTokenAmount uint
-			PaidMakerFee           uint
-			PaidTakerFee           uint
-			Indexedtokens          [32]byte
-			OrderHash              [32]byte
-		}{}
+		log.Printf("Log: %d\n", vLog.Index)
+		fillEvent := LogFill{}
 		err := contractAbi.Unpack(&fillEvent, "LogFill", vLog.Data)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(" ")
+			log.Println(err)
+			fmt.Println(" ")
 		}
-
-		// fmt.Println(string(fillEvent.indexedmaker))
-		// fmt.Println(string(fillEvent.taker))
 	}
-
 }
